@@ -10,7 +10,6 @@ app.get("/board/*", (req, res, next) => {
 });
 
 const Redis = require("ioredis");
-const { brotliCompress } = require("zlib");
 const REDIS_PREFIX = process.env.REDIS_PREFIX || "whiteboard-";
 const REDIS_TTL_SEC = process.env.REDIS_TTL_SEC || 30 * 24 * 60 * 60; // default: 30 days
 const { REDIS_URL } = process.env;
@@ -24,57 +23,13 @@ if (REDIS_URL) {
 
 const boards = {};
 
-app.post("/add-page/:boardId", (req, res) => {
-  try {
-    const { boardId } = req.params;
-    
-    
-    boards[boardId].pages.push({
-      lineHist: [],
-      noteList: {},
-      imageList: {},
-      
-    });
-
-    console.log("New page created.");
-
-    // ส่งข้อมูลกลับเป็น JSON ที่มี boardId ใน response
-    res.status(200).json({message: "success."});
-  } catch (error) {
-    console.error("Error creating new page:", error);
-    res.status(500).json({ error: "Failed to create new page." });
-  }
-});
- 
-
-// Endpoint to get a specific board by its key and list its pages
-app.get("/get-board/:boardId", (req, res) => {
-  try {
-    const { boardId } = req.params;
-
-    if (!boards[boardId]) {
-      res.status(404).json({ error: "Board not found." });
-      return;
-    }
-
-    // Retrieve the board and its pages
-    const boardData = boards[boardId];
-    res.json(boardData);
-  } catch (error) {
-    console.error("Error fetching board data:", error);
-    res.status(500).json({ error: "Failed to fetch board data." });
-  }
-});
- 
-
 const saveLimitter = {};
-
-async function saveBoard(boardId,pageIndex) {
+async function saveBoard(boardId) {
   if (!redis || saveLimitter[boardId]) return;
 
   saveLimitter[boardId] = setTimeout(() => {
     redis.set(
-      REDIS_PREFIX + "board-" + boardId  ,
+      REDIS_PREFIX + "board-" + boardId,
       JSON.stringify(boards[boardId]),
       "ex",
       REDIS_TTL_SEC
@@ -83,8 +38,6 @@ async function saveBoard(boardId,pageIndex) {
     console.log("saveBoard", { boardId });
   }, 3000);
 }
-
-
 async function load() {
   if (redis) {
     const prefix = REDIS_PREFIX + "board-";
@@ -96,9 +49,6 @@ async function load() {
     }
   }
 }
- 
-
-
 load();
 
 // function for dynamic sorting
@@ -126,30 +76,21 @@ function onConnection(socket) {
   const { boardId } = socket.handshake.query;
   let lineHist = [];
   let noteList = {};
-
   if (boardId && boards[boardId]) {
-    
-     lineHist = boards[boardId].pages[0].lineHist;
-     noteList = boards[boardId].pages[0].noteList;
+    lineHist = boards[boardId].lineHist;
+    noteList = boards[boardId].noteList;
   }
   socket.join(boardId);
   console.log("onConnection", { id: socket.id, boardId });
-  
 
   socket.on("createBoard", (data, ack) => {
     const boardId = uuidv1();
-    
     boards[boardId] = {
+      lineHist: [],
+      noteList: {},
       createdTimestamp: new Date().getTime(),
       boardId,
-      pages:[{
-        lineHist: [],
-        noteList: {},
-        imgList: {},
-      }],
     };
-    
-
     ack({ boardId });
     saveBoard(boardId);
   });
@@ -162,12 +103,9 @@ function onConnection(socket) {
   });
 
   socket.on("drawLine", (data) => {
-    
     lineHist.push(data);
-    
     socket.broadcast.to(boardId).emit("drawLine", data);
     saveBoard(boardId);
-    
   });
 
   socket.on("hideLine", (data) => {
@@ -214,12 +152,10 @@ function onConnection(socket) {
     if (!boardId || !boards[boardId]) return;
     boards[boardId].imageList = boards[boardId].imageList || {};
     const id = uuidv1();
-    boards[boardId].pages[0].imageList[id] = data;
+    boards[boardId].imageList[id] = data;
     io.to(boardId).emit("insertImage", { ...data, id });
     saveBoard(boardId);
   });
-
-  
 
 }
 io.on("connection", onConnection);

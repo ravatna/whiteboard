@@ -129,13 +129,14 @@ const ACTION = {
   socket.on("updateNote", updateNote);
   socket.on("redraw", redraw);
   socket.on("hideNote", onHideNote);
+  // socket.on("inserImage",onInsertImage);
   socket.on("clearBoard", () => {
     clearBoard();
     toastr.info("Someone cleared the board.", "Infomation");
   });
   socket.emit("load", null, (data) => {
-    console.log("load", data);
-    const { status, lineHist, noteList } = data;
+    //console.log("load", data);
+    const { status, pages } = data;
     if (status === "NOT_FOUND") {
       $.confirm({
         theme: "supervan",
@@ -149,12 +150,15 @@ const ACTION = {
         },
       });
     }
-    for (let line of lineHist) {
-      drawLine(line, false);
-    }
-    for (let key of Object.keys(noteList)) {
-      updateNote(noteList[key]);
-    }
+
+    renderPages(pages);
+
+    // for (let line of lineHist) {
+    //   drawLine(line, false);
+    // }
+    // for (let key of Object.keys(noteList)) {
+    //   updateNote(noteList[key]);
+    // }
   });
 
   socket.on("insertImage",(data) => {
@@ -163,6 +167,7 @@ const ACTION = {
   });
 
   function redraw(data) {
+    console.log(data);
     const { lineHist } = data;
     context.clearRect(
       0,
@@ -223,6 +228,7 @@ const ACTION = {
   }
 
   function drawLine(data, drawing, emit) {
+    
     if (data.hidden) return;
 
     const x0 = data.x0 - PADDING;
@@ -676,4 +682,123 @@ const ACTION = {
       Math.floor(strong * Math.random()).toString(16)
     );
   }
+
+
+
+/////////////
+
+
+
+ // สร้างฟังก์ชันสำหรับเรียกใช้ SweetAlert เมื่อคลิกที่ปุ่ม Download QR Code
+ document.getElementById("downloadBtn").addEventListener("click", () => {
+  var url  = document.location.href;
+  var parts = url.split("/");
+  const boardId = parts[parts.length-1]; // ใส่ค่า boardId ที่ต้องการส่งไปที่เส้นทาง "/qrcode-pdf/:id"
+
+  // เรียกใช้ SweetAlert เพื่อแสดง popup และให้ผู้ใช้งานกด "Download" เพื่อดาวน์โหลดไฟล์ PDF
+  Swal.fire({
+    title: "Download QR Code",
+    text: "Do you want to download the QR code as a PDF file?",
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "Download",
+    cancelButtonText: "Cancel",
+  }).then((result) => {
+    if (result.isConfirmed) {
+      // เมื่อผู้ใช้งานกด "Download" ให้เรียกใช้ URL "/qrcode-pdf/:id" ที่มีค่า boardId ที่ต้องการส่งไป
+      window.open(`/qrcode-pdf/${boardId}`, "_blank");
+    }
+  });
+});
+
+ 
+
+let boardsData = {};
+async function fetchBoardsAndRenderPages() {
+  try {
+    const response = await fetch("/get-board/" + boardId); // Replace with the endpoint to get the boards data from the backend
+    if (!response.ok) {
+      throw new Error("Failed to fetch boards data.");
+    }
+    boardsData = await response.json();
+    
+    renderPages(boardsData.pages);
+  } catch (error) {
+    console.error("Error fetching boards data:", error);
+  }
+}
+
+function renderPages(pages) {
+  
+  const pageButtonsContainer = document.getElementById("pageButtons");
+  pageButtonsContainer.innerHTML = "";
+  var i = 1;
+  for (const page in pages) {
+    const pageButton = document.createElement("button");
+    pageButton.innerText = "Page " + (i++);
+    pageButton.addEventListener("click", () => {
+      switchPage(pages,page);
+    });
+    pageButtonsContainer.appendChild(pageButton);
+  }
+}
+
+function switchPage(pages, page) {
+  
+  if (pages[page] ) {
+    var lineHist = pages[page].lineHist;
+    var noteList = pages[page].noteList;
+    socket.emit("redraw", pages[page]); 
+    // Use the socket object to emit to a specific room
+
+    for (let line of lineHist) {
+      drawLine(line, false);
+    }
+    for (let key of Object.keys(noteList)) {
+      updateNote(noteList[key]);
+    }
+  }
+}
+
+
+window.addEventListener("load", () => {
+  fetchBoardsAndRenderPages();
+});
+
+
+async function createNewPage() {
+  try {
+  const response = await fetch(`/add-page/`+ boardId, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    }
+    
+  });
+
+  console.log(response);
+  if (!response.ok) {
+    throw new Error("Failed to create new page.");
+  }
+
+
+  renderPages();
+
+  } catch (error) {
+    console.error("Error creating new page:", error); 
+  }
+}
+
+
+document.getElementById("addPageButton").addEventListener("click", () => {
+  createNewPage();
+});
+
+///////////
+
+
+
+
 })();
+
+
