@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Whiteboard</title>
+    <title>Sinat Online Whiteboard 1.0.0</title>
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/board.css" />
     <link
@@ -26,13 +26,13 @@
   <body style="min-width: 1660px; min-height: 1300px">
     <div id="menu">
       <div><img id="logo" src="/logo.png" alt="" /></div>
-      <div id="title"><a href="/">Whiteboard</a></div>
+      <div id="title"><a href="/">กระดานออนไลน์</a></div>
       <div>
-        <button id="clear-button">Clear board</button>
+        <button id="clear-button">ลบกระดาน</button>
       </div>
       <div id="form-signature">
         signature
-        <input id="signature" type="text" value="" placeholder="John Smith" />
+        <input id="signature" type="text" value="" placeholder="ระบุชื่อผู้ใช้กระดาน..." />
       </div>
     </div>
     <div>
@@ -77,6 +77,12 @@
           <i class="far fa-circle"></i>
           <span class="tooltiptext">Circle</span>
         </div>
+
+        <div class="tool image tooltip">
+          <i class="far fa-image"></i>
+          <span class="tooltiptext">Image</span>
+        </div>
+
         <div class="tool color white tooltip" data-color="white">
           <i class="fas fa-eraser" data-color="white"></i>
           <span class="tooltiptext">Eraser</span>
@@ -103,6 +109,7 @@
         <span class="tooltiptext">Redo</span>
       </div>
     </div>
+    <input type="file" id="file-input" style="display: none;">
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>

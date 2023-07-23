@@ -4,6 +4,7 @@ const RATE = 4;
 function calc(position, y) {
   return (position - 30 - (y ? 40 : 0)) / RATE;
 }
+
 function drawLine(context, data) {
   if (data.hidden) return;
   const x0 = calc(data.x0);
@@ -83,13 +84,50 @@ function updateRecentBoards(boards) {
   }
 }
 
+function drawImage(context, data) {
+  if (data.hidden) return;
+  const x = calc(data.x);
+  const y = calc(data.y, true);
+  const image = new Image();
+  image.onload = () => {
+    context.drawImage(
+      image,
+      x,
+      y,
+      data.width / RATE,
+      (data.height / data.width) * (data.width / RATE)
+    );
+  };
+  image.src = data.src;
+}
+
+
+
+// send image data to server via socket event
+function insertImage(src, x, y, width, height) {
+  const data = { src, x, y, width, height };
+  socket.emit("insertImage", data);
+}
+
+
 // config
 (function () {
   const socket = io();
   const btn = $("#create-board-button");
+  const btnImg = $("#insert-image-button");
+
   btn.click(() => {
     socket.emit("createBoard", null, (data) => {
       window.location.href = "/board/" + data.boardId;
+    });
+  });
+
+  btnImg.click(() => {
+    // handle image data received via socket event
+    socket.on("insertImage", (data) => {
+      const whiteboard = $("#whiteboard")[0];
+      const context = whiteboard.getContext("2d");
+      drawImage(context, data);
     });
   });
 

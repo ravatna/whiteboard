@@ -146,7 +146,18 @@ function onConnection(socket) {
         .slice(0, 9)
     );
   });
+
+  socket.on("insertImage", (data) => {
+    const { boardId } = socket.handshake.query;
+    if (!boardId || !boards[boardId]) return;
+    boards[boardId].imageList = boards[boardId].imageList || {};
+    const id = uuidv1();
+    boards[boardId].imageList[id] = data;
+    io.to(boardId).emit("insertImage", { ...data, id });
+    saveBoard(boardId);
+  });
+
 }
 io.on("connection", onConnection);
 
-http.listen(PORT, () => console.log("listening on port " + PORT));
+http.listen(PORT, '0.0.0.0',() => console.log("listening on port " + PORT));

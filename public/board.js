@@ -109,6 +109,8 @@ const ACTION = {
   $(".undo").click(onUndo);
   $(".redo").click(onRedo);
   $("#clear-button").click(onClearBoard);
+  $(".image").click(onInsertImage);
+
   addEventListener("keydown", (event) => {
     if ((event.ctrlKey || event.metaKey) && !editing) {
       if (event.key === "z") {
@@ -153,6 +155,11 @@ const ACTION = {
     for (let key of Object.keys(noteList)) {
       updateNote(noteList[key]);
     }
+  });
+
+  socket.on("insertImage",(data) => {
+    drawImage(context, data);
+    
   });
 
   function redraw(data) {
@@ -461,6 +468,45 @@ const ACTION = {
       $(window).scrollLeft(newX);
       $(window).scrollTop(newY);
     }
+  }
+
+
+
+
+  const fileInput = document.getElementById("file-input");
+ 
+
+  const RATE = 4;
+  function calc(position, y) {
+    return (position - 30 - (y ? 40 : 0)) / RATE;
+  }
+  function drawImage(context, data) {
+    if (data.hidden) return;
+    const x = calc(data.x);
+    const y = calc(data.y, true);
+    const image = new Image();
+
+    image.onload = () => {
+      context.drawImage(image.src, x, y,  data.width / RATE,(data.height / data.width) * (data.width / RATE));
+    };
+    image.src = data.imageData;
+
+  } 
+  
+
+  function onInsertImage() {
+
+    fileInput.click();
+
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const imageData = reader.result;
+        socket.emit("insertImage", { imageData });
+      };
+    });  
   }
 
   function onPenSelect(e) {
